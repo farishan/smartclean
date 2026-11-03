@@ -110,7 +110,7 @@ is_protected() {
 }
 
 # ---------- sensitive-data blocklist (NEVER delete, even in deep sweep) ----------
-SENSITIVE_KEYWORDS='password|passwd|secret|keyring|credential|token|cookie|login|profile|session|history|extension|bookmark|autofill|credit card|login data|web data|key[0-9]|cert9|places\.sqlite|keychain|keystore|wallet|private\.key|\.key$|id_rsa|id_dsa|id_ecdsa|id_ed25519|ssh|gpg|gnupg'
+SENSITIVE_KEYWORDS='password|passwd|secret|keyring|credential|token|cookie|login|profile|session|history|extension|bookmark|autofill|credit card|login data|web data|key[0-9]|cert9|places\.sqlite|keychain|keystore|wallet|private\.key|\.key$|\.pem$|\.p12$|\.pfx$|\.env|id_rsa|id_dsa|id_ecdsa|id_ed25519|ssh|gpg|gnupg'
 
 is_sensitive_name() {
   local n

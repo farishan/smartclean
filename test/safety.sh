@@ -36,4 +36,10 @@ out=$(json_escape 'a"b\c')
 [[ "$out" == 'a\"b\\c' ]] || { echo "FAIL: json_escape got $out"; exit 1; }
 echo "PASS: json_escape"
 
+# env / key files sensitive
+for name in ".env" ".env.local" "server.pem" "cert.p12"; do
+  p="$HOME/dev/$name"
+  if is_sensitive "$p"; then echo "PASS: sensitive: $name"; else echo "FAIL: expected sensitive: $name"; exit 1; fi
+done
+
 echo "ALL SAFETY TESTS PASSED"
