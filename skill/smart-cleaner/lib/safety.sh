@@ -2,7 +2,7 @@
 # lib/safety.sh — protected paths, sensitive-data blocklist, safe removal
 # Adapted from mole (macOS) / mole-for-ubuntu. Standalone so smartclean works without mo.
 
-SMARTCLEAN_VERSION="0.2.1"
+SMARTCLEAN_VERSION="0.2.2"
 
 DRY_RUN=${DRY_RUN:-0}
 ASSUME_YES=${ASSUME_YES:-0}
@@ -110,7 +110,7 @@ is_protected() {
 }
 
 # ---------- sensitive-data blocklist (NEVER delete, even in deep sweep) ----------
-SENSITIVE_KEYWORDS='password|passwd|secret|keyring|credential|token|cookie|login|profile|session|history|extension|bookmark|autofill|credit card|login data|web data|key[0-9]|cert9|places\.sqlite|keychain|keystore|wallet|private\.key|\.key$|ssh|gpg|gnupg'
+SENSITIVE_KEYWORDS='password|passwd|secret|keyring|credential|token|cookie|login|profile|session|history|extension|bookmark|autofill|credit card|login data|web data|key[0-9]|cert9|places\.sqlite|keychain|keystore|wallet|private\.key|\.key$|id_rsa|id_dsa|id_ecdsa|id_ed25519|ssh|gpg|gnupg'
 
 is_sensitive_name() {
   local n

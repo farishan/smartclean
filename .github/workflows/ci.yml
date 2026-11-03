@@ -11,4 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run smoke tests
-        run: bash test/smoke.sh ./bin/smartclean
+        run: |
+          bash test/safety.sh
+          bash test/smoke.sh ./bin/smartclean
