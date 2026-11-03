@@ -32,4 +32,13 @@ PY
 echo "== apply dry-run =="
 "$SC" apply --dry-run --category trash >/dev/null
 
+echo "== invalid args =="
+for args in "--target /nope" "--keep-days x" "--min-large 0" "--timeout 0" "--category bogus"; do
+  if "$SC" scan $args >/dev/null 2>&1; then
+    echo "FAIL: expected failure for: $args" >&2
+    exit 1
+  fi
+done
+echo "invalid args ok"
+
 echo "ALL SMOKE TESTS PASSED"
