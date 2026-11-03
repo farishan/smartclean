@@ -77,6 +77,10 @@ if ! [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]]; then
   echo "smartclean: --keep-days must be a non-negative integer" >&2
   exit 1
 fi
+if ! [[ "$MIN_LARGE_MB" =~ ^[0-9]+$ ]] || (( MIN_LARGE_MB < 1 )); then
+  echo "smartclean: --min-large must be a positive integer" >&2
+  exit 1
+fi
 [[ -z $TARGET ]] && { [[ -d $HOME/dev ]] && TARGET="$HOME/dev" || TARGET="$HOME"; }
 TARGET=$(normalize_path "$TARGET")
 [[ -d $TARGET ]] || { echo "smartclean: --target must be an existing directory: $TARGET" >&2; exit 1; }
