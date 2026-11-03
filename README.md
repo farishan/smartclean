@@ -1,6 +1,6 @@
 # smart-cleaner
 
-A smart, safety-first disk cleaner built on top of [mole-for-ubuntu](https://github.com/ccyisafool/mole-for-ubuntu-and-friends) (`mo`) and OpenCode.
+A smart, safety-first disk cleaner built on top of [Mole](https://github.com/tw93/mole) (`mo`, macOS) and OpenCode.
 
 Unlike brute-force cleaners, `smartclean` ranks candidates by size, skips hot caches and active projects, refuses to touch sensitive data (passwords, cookies, browser profiles, keyrings, ssh/gpg), and never deletes without confirmation. Default mode is **scan** (no changes).
 
@@ -11,7 +11,7 @@ git clone https://github.com/farishan/smart-cleaner.git ~/dev/smart-cleaner
 cd ~/dev/smart-cleaner && bash install.sh
 ```
 
-Requires: bash, coreutils, find, du, stat. Optional: `mo` (mole-for-ubuntu) for system-level helpers; `snap`, `flatpak`, `docker`/`podman` if you use those.
+Requires: bash, coreutils, find, du, stat. Optional: `mo` (Mole, macOS) for system-level helpers; `brew`, `docker`/`podman` if you use those. Linux-only categories (snap/flatpak/apt) are skipped on macOS.
 
 ## Usage
 

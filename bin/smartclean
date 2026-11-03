@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# smartclean — smart disk cleaner on top of mole-for-ubuntu + OpenCode
+# smartclean — smart disk cleaner on top of Mole (macOS) + OpenCode
 # Default mode is SCAN (no changes). Use --apply to delete (with confirmation).
 set -o pipefail
 
-SC_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+SC_HOME="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
 # shellcheck source=lib/safety.sh
 source "$SC_HOME/lib/safety.sh"
 
@@ -28,7 +28,7 @@ Default command is ${C_BOLD}scan${C_RESET}: analyze and report, delete nothing.
 Use ${C_BOLD}apply${C_RESET} (or --apply) to actually delete (confirms per category).
 
 ${C_BOLD}Options:${C_RESET}
-  --deep                include deep sweeps (all of ~/.cache, unused images, cold caches)
+  --deep                include deep sweeps (all of ~/Library/Caches, unused images, cold caches)
   --keep-days N         protect caches/projects used within N days (default $KEEP_DAYS)
   --target DIR          tree to scan for build artifacts / large files (default ~/dev or \$HOME)
   --category LIST       comma list: trash,browsers,dev,cache,system,snap,flatpak,docker,artifacts,installers,large (default all)
@@ -73,12 +73,11 @@ done
 [[ $CMD == scan ]] && { DRY_RUN=1; APPLY=0; }
 
 [[ -z $TARGET ]] && { [[ -d $HOME/dev ]] && TARGET="$HOME/dev" || TARGET="$HOME"; }
-TARGET=$(realpath -m -- "$TARGET" 2>/dev/null || echo "$TARGET")
+TARGET=$(normalize_path "$TARGET")
 
 cat_in() { [[ ",$CATEGORIES," == *,all,* || ",$CATEGORIES," == *,$1,* ]]; }
 
 # ---------- report state ----------
-# We collect candidate lines: "size<TAB>category<TAB>path<TAB>reason"
 CANDS=()
 SKIPS=()
 add_cand() { # size category path reason
@@ -92,9 +91,7 @@ add_cand() { # size category path reason
 add_skip() { SKIPS+=("$1"$'\t'"$2"); }  # path reason
 
 # ---------- bounded scan wrapper ----------
-# run a find with timeout; prints nothing on timeout but records skip
 bounded_find() {
-  # args: root + find args... ; prints found paths
   timeout "$SCAN_TIMEOUT" find "$@" 2>/dev/null
   local rc=$?
   if (( rc == 124 )); then
@@ -106,46 +103,60 @@ bounded_find() {
 scan_trash() {
   cat_in trash || return 0
   local p
-  for p in "$HOME/.local/share/Trash/files" "$HOME/.local/share/Trash/info" "$HOME/.cache/thumbnails"; do
+  for p in "$HOME/.Trash" "$HOME/.local/share/Trash/files" "$HOME/.local/share/Trash/info" "$HOME/.cache/thumbnails" "$HOME/Library/Caches/com.apple.QuickLook.thumbnailcache"; do
     [[ -e $p ]] || continue
     local sz age
     sz=$(path_size "$p"); (( sz > 0 )) || continue
     age=$(path_age_days "$p")
-    add_cand "$sz" "trash" "$p" "trash/thumbnails (age ${age}d)"
+    add_cand "$sz" "trash" "$p" "trash (age ${age}d)"
   done
 }
 
 # ---------- category: browsers ----------
 scan_browsers() {
   cat_in browsers || return 0
-  local b p sz age
-  for b in "${BROWSERS[@]}"; do
-    for p in "$HOME/.cache/$b" "$HOME/snap/$b/common/.cache"; do
-      [[ -d $p ]] || continue
-      cache_candidate_ok "$p" || { add_skip "$p" "sensitive/protected"; continue; }
-      if browser_running "$b"; then
-        add_skip "$p" "browser running (locked)"; continue
-      fi
-      sz=$(path_size "$p"); (( sz > 0 )) || continue
-      age=$(path_age_days "$p")
-      # smart: skip hot caches used within KEEP_DAYS unless --deep
-      if (( ! DEEP )) && (( age < KEEP_DAYS )); then
-        add_skip "$p" "hot cache (used ${age}d ago < ${KEEP_DAYS}d)"; continue
-      fi
-      add_cand "$sz" "browsers" "$p" "browser cache (age ${age}d)"
-    done
+  local entry proc path sz age
+  local -a entries=(
+    "google-chrome|$HOME/.cache/google-chrome"
+    "google-chrome|$HOME/snap/google-chrome/common/.cache"
+    "google-chrome|$HOME/Library/Caches/Google/Chrome"
+    "chromium|$HOME/.cache/chromium"
+    "chromium|$HOME/Library/Caches/Chromium"
+    "BraveSoftware|$HOME/.cache/BraveSoftware"
+    "BraveSoftware|$HOME/Library/Caches/BraveSoftware/Brave-Browser"
+    "microsoft-edge|$HOME/.cache/microsoft-edge"
+    "microsoft-edge|$HOME/Library/Caches/Microsoft Edge"
+    "vivaldi|$HOME/.cache/vivaldi"
+    "vivaldi|$HOME/Library/Caches/Vivaldi"
+    "opera|$HOME/.cache/opera"
+    "opera|$HOME/Library/Caches/com.operasoftware.Opera"
+  )
+  for entry in "${entries[@]}"; do
+    proc="${entry%%|*}"; path="${entry##*|}"
+    [[ -d $path ]] || continue
+    cache_candidate_ok "$path" || { add_skip "$path" "sensitive/protected"; continue; }
+    if browser_running "$proc"; then
+      add_skip "$path" "browser running (locked)"; continue
+    fi
+    sz=$(path_size "$path"); (( sz > 0 )) || continue
+    age=$(path_age_days "$path")
+    if (( ! DEEP )) && (( age < KEEP_DAYS )); then
+      add_skip "$path" "hot cache (used ${age}d ago < ${KEEP_DAYS}d)"; continue
+    fi
+    add_cand "$sz" "browsers" "$path" "browser cache (age ${age}d)"
   done
   # firefox special paths
-  for p in "$HOME/.cache/mozilla"; do
-    [[ -d $p ]] || continue
-    cache_candidate_ok "$p" || { add_skip "$p" "sensitive/protected"; continue; }
-    if browser_running firefox; then add_skip "$p" "browser running"; continue; fi
-    sz=$(path_size "$p"); (( sz > 0 )) || continue
-    age=$(path_age_days "$p")
+  local -a ffpaths=("$HOME/.cache/mozilla" "$HOME/Library/Caches/Firefox" "$HOME/Library/Caches/Mozilla")
+  for path in "${ffpaths[@]}"; do
+    [[ -d $path ]] || continue
+    cache_candidate_ok "$path" || { add_skip "$path" "sensitive/protected"; continue; }
+    if browser_running firefox; then add_skip "$path" "browser running"; continue; fi
+    sz=$(path_size "$path"); (( sz > 0 )) || continue
+    age=$(path_age_days "$path")
     if (( ! DEEP )) && (( age < KEEP_DAYS )); then
-      add_skip "$p" "hot cache (used ${age}d ago)"; continue
+      add_skip "$path" "hot cache (used ${age}d ago)"; continue
     fi
-    add_cand "$sz" "browsers" "$p" "firefox cache (age ${age}d)"
+    add_cand "$sz" "browsers" "$path" "firefox cache (age ${age}d)"
   done
 }
 
@@ -155,10 +166,15 @@ scan_dev() {
   local -a pairs=(
     "$HOME/.npm/_cacache:npm cache"
     "$HOME/.cache/pip:pip cache"
+    "$HOME/Library/Caches/pip:pip cache"
     "$HOME/.cache/yarn:yarn cache"
+    "$HOME/Library/Caches/Yarn:yarn cache"
     "$HOME/.cache/pnpm:pnpm cache"
+    "$HOME/.local/share/pnpm/store:pnpm store"
+    "$HOME/Library/pnpm/store:pnpm store"
     "$HOME/.cache/go-build:go build cache"
     "$HOME/.cache/node-gyp:node-gyp cache"
+    "$HOME/Library/Caches/node-gyp:node-gyp cache"
     "$HOME/.cache/uv:uv cache"
     "$HOME/.cache/pypoetry/cache:poetry cache"
     "$HOME/.cargo/registry/cache:cargo registry cache"
@@ -191,7 +207,7 @@ scan_cache() {
   cat_in cache || return 0
   (( DEEP )) || return 0
   local entry sz age
-  for entry in "$HOME"/.cache/* "$HOME"/.cache/.[!.]*; do
+  for entry in "$HOME"/.cache/* "$HOME"/.cache/.[!.]* "$HOME"/Library/Caches/*; do
     [[ -e $entry ]] || continue
     cache_candidate_ok "$entry" || { add_skip "$entry" "sensitive/protected"; continue; }
     sz=$(path_size "$entry"); (( sz > 0 )) || continue
@@ -206,22 +222,30 @@ scan_cache() {
 # ---------- category: system ----------
 scan_system() {
   cat_in system || return 0
-  # apt cache
-  local pkgcache=/var/cache/apt/archives
-  if [[ -d $pkgcache ]]; then
-    local sz; sz=$(path_size "$pkgcache")
-    (( sz > 100*1024 )) && add_cand "$sz" "system" "$pkgcache" "apt downloaded packages"
+  # brew cache (system-level helper via Mole/brew)
+  if have brew; then
+    local bcache
+    bcache=$(brew --cache 2>/dev/null)
+    if [[ -d $bcache ]]; then
+      local sz; sz=$(path_size "$bcache")
+      (( sz > 0 )) && add_cand "$sz" "system" "$bcache" "homebrew cache"
+    fi
   fi
-  # journal
-  if have journalctl; then
-    local ju
-    ju=$(journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[KMGTP]?i?B?' | head -1)
-    [[ -n $ju ]] && add_cand 0 "system" "journal" "systemd journal: $ju (vacuum >7d)"
-  fi
-  # rotated logs
+  # macOS user logs
   local logs_sz
-  logs_sz=$(find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -printf '%s\n' 2>/dev/null | awk '{s+=$1} END{print s+0}')
-  (( logs_sz > 0 )) && add_cand "$logs_sz" "system" "/var/log/*.gz,*.old,*.[0-9]" "rotated logs"
+  if [[ $SC_OS == Darwin ]]; then
+    logs_sz=$(find "$HOME/Library/Logs" -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -exec stat -f%z {} + 2>/dev/null | awk '{s+=$1} END{print s+0}')
+  else
+    logs_sz=$(find "$HOME/Library/Logs" -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -printf '%s\n' 2>/dev/null | awk '{s+=$1} END{print s+0}')
+  fi
+  (( ${logs_sz:-0} > 0 )) && add_cand "$logs_sz" "system" "$HOME/Library/Logs" "rotated user logs"
+  # /var/log rotated logs (if accessible)
+  if [[ $SC_OS == Darwin ]]; then
+    logs_sz=$(find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -exec stat -f%z {} + 2>/dev/null | awk '{s+=$1} END{print s+0}')
+  else
+    logs_sz=$(find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -printf '%s\n' 2>/dev/null | awk '{s+=$1} END{print s+0}')
+  fi
+  (( ${logs_sz:-0} > 0 )) && add_cand "$logs_sz" "system" "/var/log/*.gz,*.old,*.[0-9]" "rotated logs"
 }
 
 # ---------- category: snap ----------
@@ -231,10 +255,8 @@ scan_snap() {
   local line
   while IFS= read -r line; do
     [[ -z $line ]] && continue
-    # line format "name=rev"
     add_cand 0 "snap" "snap:${line}" "old disabled snap revision"
   done < <(snap list --all 2>/dev/null | awk '/disabled/{print $1"="$3}')
-  # saved snapshots
   local snaps
   snaps=$(snap saved 2>/dev/null | tail -n +2)
   if [[ -n $snaps && $snaps != *"No snapshots"* ]]; then
@@ -249,7 +271,7 @@ scan_snap() {
 scan_flatpak() {
   cat_in flatpak || return 0
   have flatpak || return 0
-  local d app sz
+  local d app sz age
   for d in "$HOME"/.var/app/*/cache; do
     [[ -d $d ]] || continue
     cache_candidate_ok "$d" || { add_skip "$d" "sensitive/protected"; continue; }
@@ -279,7 +301,6 @@ scan_artifacts() {
   cat_in artifacts || return 0
   local root="$TARGET"
   [[ -d $root ]] || return 0
-  # warn if huge tree
   local root_sz
   root_sz=$(path_size "$root")
   if (( root_sz > 50*1024*1024*1024 )) && (( ! DEEP )); then
@@ -294,38 +315,35 @@ scan_artifacts() {
   done < <( bounded_find "$root" -xdev \
       \( -name .git -o -path "$HOME/.cache" -o -path "$HOME/.local/share/Trash" \
          -o -path "$HOME/snap" -o -path "$HOME/.var" -o -path "$HOME/.npm" \
-         -o -path "$HOME/.cargo/registry" -o -path "$HOME/.rustup" \) -prune -o \
+         -o -path "$HOME/.cargo/registry" -o -path "$HOME/.rustup" \
+         -o -path "$HOME/Library/Caches" \
+         -o -path '*/node_modules/*' -o -path '*/target/*' -o -path '*/.next/*' \) -prune -o \
       -type d \( -name node_modules -o -name target -o -name __pycache__ \
                  -o -name .pytest_cache -o -name .mypy_cache -o -name .ruff_cache \
-                 -o -name .tox -o -name .next -o -name build \) -prune -print 2>/dev/null )
+                 -o -name .tox -o -name .next -o -name build -o -name dist \) -prune -print 2>/dev/null )
 
   for hit in "${hits[@]}"; do
     parent=$(dirname "$hit")
     artname=$(basename "$hit")
-    # validate artifact context
     case "$artname" in
       node_modules) [[ -f $parent/package.json ]] || continue ;;
       target)       [[ -f $parent/Cargo.toml   ]] || continue ;;
       .next)        [[ -f $parent/package.json ]] || continue ;;
       build)        [[ -f $parent/build.gradle || -f $parent/build.gradle.kts ]] || continue ;;
     esac
-    # smart: determine project root & activity
     local projroot="$parent"
-    # walk up to find project marker
     local probe="$parent"
     for _ in 1 2 3; do
       if [[ -f $probe/.git/HEAD || -d $probe/.git ]]; then break; fi
       probe=$(dirname "$probe")
       [[ $probe == / || $probe == "$HOME" ]] && break
     done
-    # activity via git or mtime
     local last=0
     if [[ -d $probe/.git ]]; then
       last=$(git -C "$probe" log -1 --format=%ct 2>/dev/null || echo 0)
     fi
-    (( last == 0 )) && last=$(stat -c %Y "$hit" 2>/dev/null || echo 0)
+    (( last == 0 )) && last=$(stat_mtime "$hit" 2>/dev/null || echo 0)
     local age=$(( ( $(date +%s) - last ) / 86400 ))
-    # protect active projects unless --deep
     if (( ! DEEP )) && (( age < 30 )); then
       add_skip "$hit" "active project (used ${age}d ago)"; continue
     fi
@@ -340,7 +358,8 @@ scan_artifacts() {
 scan_installers() {
   cat_in installers || return 0
   local -a name_tests=(-iname '*.deb' -o -iname '*.rpm' -o -iname '*.run' -o -iname '*.iso'
-    -o -iname '*.img' -o -iname '*.snap' -o -iname '*.flatpak' -o -iname '*.flatpakref' -o -iname '*.appimage')
+    -o -iname '*.img' -o -iname '*.snap' -o -iname '*.flatpak' -o -iname '*.flatpakref' -o -iname '*.appimage'
+    -o -iname '*.dmg' -o -iname '*.pkg')
   local files=() f
   while IFS= read -r f; do files+=("$f"); done < <(
     { find "$HOME/Downloads" "$HOME/Desktop" -maxdepth 3 -type f \( "${name_tests[@]}" \) 2>/dev/null
@@ -377,13 +396,15 @@ scan_trash; scan_browsers; scan_dev; scan_cache; scan_system; scan_snap
 scan_flatpak; scan_docker; scan_artifacts; scan_installers; scan_large
 
 # ---------- output ----------
-# sort candidates by size desc
 if (( ${#CANDS[@]} > 0 )); then
-  mapfile -t CANDS < <(printf '%s\n' "${CANDS[@]}" | sort -t$'\t' -k1,1rn)
+  tmpf=$(mktemp)
+  printf '%s\n' "${CANDS[@]}" | sort -t"$(printf '\t')" -k1,1rn > "$tmpf"
+  CANDS=()
+  while IFS= read -r line; do CANDS+=("$line"); done < "$tmpf"
+  rm -f "$tmpf"
 fi
 
 if (( JSON )); then
-  # build JSON manually
   printf '{\n  "version": "%s",\n  "keep_days": %d,\n  "deep": %d,\n  "candidates": [\n' "$SMARTCLEAN_VERSION" "$KEEP_DAYS" "$DEEP"
   local i=0
   for c in "${CANDS[@]}"; do
@@ -409,13 +430,9 @@ printf '%s\n' "${C_BOLD}smartclean scan${C_RESET} — smart disk analysis (no ch
 printf '%s\n' "${C_DIM}keep-days=${KEEP_DAYS} deep=${DEEP} target=${TARGET}${C_RESET}"
 printf '\n'
 
-# group totals
-declare -A CAT_TOTAL CAT_COUNT
-local total=0
+total=0
 for c in "${CANDS[@]}"; do
   IFS=$'\t' read -r sz cat path reason <<<"$c"
-  CAT_TOTAL[$cat]=$(( ${CAT_TOTAL[$cat]:-0} + sz ))
-  CAT_COUNT[$cat]=$(( ${CAT_COUNT[$cat]:-0} + 1 ))
   total=$((total + sz))
 done
 
@@ -433,12 +450,18 @@ fi
 
 printf '\n%s\n' "${C_BOLD}Category totals:${C_RESET}"
 for cat in trash browsers dev cache system snap flatpak docker artifacts installers large; do
-  [[ -n ${CAT_COUNT[$cat]:-} ]] || continue
-  printf '  %-11s %8s  (%d item(s))\n' "$cat" "$(human_size "${CAT_TOTAL[$cat]}")" "${CAT_COUNT[$cat]}"
+  cnt=0; tot=0
+  for c in "${CANDS[@]}"; do
+    IFS=$'\t' read -r sz ccat path reason <<<"$c"
+    [[ $ccat == "$cat" ]] || continue
+    cnt=$((cnt+1)); tot=$((tot+sz))
+  done
+  (( cnt == 0 )) && continue
+  printf '  %-11s %8s  (%d item(s))\n' "$cat" "$(human_size "$tot")" "$cnt"
 done
 
 printf '\n%s\n' "${C_BOLD}Smart skips (${#SKIPS[@]}):${C_RESET}"
-local shown=0
+shown=0
 for s in "${SKIPS[@]}"; do
   IFS=$'\t' read -r path reason <<<"$s"
   printf '  %s  %s\n' "${path/#$HOME/\~}" "${C_DIM}$reason${C_RESET}"
@@ -452,7 +475,6 @@ printf '\n%s\n' "${C_DIM}Run 'smartclean apply' to delete (confirms per category
 if (( APPLY )); then
   printf '\n%s\n' "${C_BOLD}=== APPLY MODE ===${C_RESET}"
   DRY_RUN=0
-  # group candidates by category; confirm per category
   local cat
   for cat in trash browsers dev cache system snap flatpak docker artifacts installers large; do
     local items=()
@@ -466,14 +488,14 @@ if (( APPLY )); then
       printf '  skipped\n'; continue
     fi
     case "$cat" in
-      trash)
-        for p in "${items[@]}"; do safe_rm "$p"; done ;;
-      browsers|dev|cache|flatpak)
-        for p in "${items[@]}"; do safe_rm "$p"; done ;;
-      artifacts|installers|large)
+      trash|browsers|dev|cache|flatpak|artifacts|installers|large)
         for p in "${items[@]}"; do safe_rm "$p"; done ;;
       system)
-        # apt cache
+        if have brew; then
+          if confirm_or_dry "Run brew cleanup?"; then
+            brew cleanup 2>/dev/null || true
+          fi
+        fi
         if [[ -d /var/cache/apt/archives ]]; then
           local sz; sz=$(path_size /var/cache/apt/archives)
           if (( sz > 100*1024 )); then
@@ -483,13 +505,11 @@ if (( APPLY )); then
             fi
           fi
         fi
-        # journal
         if have journalctl; then
           if confirm_or_dry "Trim journal to 7 days?"; then
             if (( EUID == 0 )); then journalctl --vacuum-time=7d; else sudo journalctl --vacuum-time=7d; fi
           fi
         fi
-        # rotated logs
         if confirm_or_dry "Delete rotated logs in /var/log?"; then
           if (( EUID == 0 )); then
             find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -delete
@@ -499,7 +519,6 @@ if (( APPLY )); then
         fi
         ;;
       snap)
-        # old revisions
         local line
         while IFS= read -r line; do
           [[ -z $line ]] && continue
@@ -508,7 +527,6 @@ if (( APPLY )); then
             if (( EUID == 0 )); then snap remove "$name" --revision="$rev"; else sudo snap remove "$name" --revision="$rev"; fi
           fi
         done < <(snap list --all 2>/dev/null | awk '/disabled/{print $1"="$3}')
-        # saved snapshots
         local snaps
         snaps=$(snap saved 2>/dev/null | tail -n +2)
         if [[ -n $snaps && $snaps != *"No snapshots"* ]]; then
@@ -528,7 +546,6 @@ if (( APPLY )); then
             "$ce" image prune -f 2>/dev/null
             "$ce" builder prune -f 2>/dev/null
           fi
-          # stopped containers
           local stopped
           stopped=$("$ce" ps -a --filter status=exited --filter status=created --filter status=dead --format '{{.Names}}' 2>/dev/null)
           if [[ -n $stopped ]]; then
