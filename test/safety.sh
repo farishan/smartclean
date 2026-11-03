@@ -34,6 +34,8 @@ if cache_candidate_ok "$HOME/.cache"; then fail "cache root should not be candid
 # json_escape
 out=$(json_escape 'a"b\c')
 [[ "$out" == 'a\"b\\c' ]] || { echo "FAIL: json_escape got $out"; exit 1; }
+out=$(json_escape $'x\ny\tz')
+[[ "$out" == 'x\ny\tz' ]] || { echo "FAIL: json_escape newline/tab got $out"; exit 1; }
 echo "PASS: json_escape"
 
 # env / key files sensitive
