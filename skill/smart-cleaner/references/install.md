@@ -9,15 +9,14 @@ git clone https://github.com/farishan/smart-cleaner.git ~/dev/smart-cleaner
 cd ~/dev/smart-cleaner && bash install.sh
 ```
 
-This symlinks `~/.local/bin/smartclean` to the repo's `bin/smartclean`.
+This symlinks `~/.local/bin/smartclean` (Linux) or `/usr/local/bin/smartclean` (macOS) to the repo's `bin/smartclean`.
 
-## Optional: mole-for-ubuntu (richer system helpers)
+## Optional: Mole (richer system helpers)
 
-```bash
-# see https://github.com/ccyisafool/mole-for-ubuntu-and-friends
-```
+- macOS: https://github.com/tw93/Mole
+- Linux: https://github.com/ccyisafool/mole-for-ubuntu-and-friends
 
-smartclean works standalone; `mo` only enriches system-level helpers.
+smartclean works standalone; Mole/mo only enriches system-level helpers.
 
 ## Verify
 

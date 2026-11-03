@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/safety.sh — protected paths, sensitive-data blocklist, safe removal
-# Adapted from mole-for-ubuntu (MIT). Standalone so smartclean works without mo.
+# Adapted from mole (macOS) / mole-for-ubuntu. Standalone so smartclean works without mo.
 
 SMARTCLEAN_VERSION="0.2.0"
 
@@ -16,9 +16,40 @@ else
   C_RESET='' C_BOLD='' C_DIM='' C_RED='' C_GREEN='' C_YELLOW='' C_BLUE='' C_MAGENTA='' C_CYAN=''
 fi
 
-# Prefer mo's core.sh if installed (richer helpers); otherwise use ours.
+# OS detection for cross-platform support (macOS + Linux)
+SC_OS="$(uname -s)"
+
+# Portable stat helpers
+stat_mtime() { # path -> epoch seconds
+  local p=$1
+  if [[ $SC_OS == Darwin ]]; then
+    stat -f %m -- "$p" 2>/dev/null
+  else
+    stat -c %Y -- "$p" 2>/dev/null
+  fi
+}
+stat_size() { # path -> bytes
+  local p=$1
+  if [[ $SC_OS == Darwin ]]; then
+    stat -f %z -- "$p" 2>/dev/null
+  else
+    stat -c %s -- "$p" 2>/dev/null
+  fi
+}
+
+# Locate Mole (macOS) or mole-for-ubuntu (Linux) installation.
+MOLE_HOME=${MOLE_HOME:-}
+if [[ -z "$MOLE_HOME" ]] && command -v mole >/dev/null 2>&1; then
+  MOLE_HOME=$(sed -n "s/^SCRIPT_DIR='\(.*\)'/\1/p" "$(command -v mole)" 2>/dev/null | head -1)
+fi
+
+# Prefer mo's core if installed (richer helpers); otherwise use ours.
 MOLE_CORE=""
-for c in "${MOLE_HOME:-}/lib/core.sh" "$HOME/.local/share/mole-ubuntu/lib/core.sh"; do
+for c in "${MOLE_HOME:-}/lib/core/common.sh" \
+         /usr/local/Cellar/mole/*/libexec/lib/core/common.sh \
+         /opt/homebrew/Cellar/mole/*/libexec/lib/core/common.sh \
+         "${MOLE_HOME:-}/lib/core.sh" \
+         "$HOME/.local/share/mole-ubuntu/lib/core.sh"; do
   [[ -r $c ]] && { MOLE_CORE="$c"; break; }
 done
 
@@ -28,7 +59,19 @@ human_size() {
     printf (s==1?"%d%s":"%.1f%s"), b, u[s] }'
 }
 path_size() { local s; [[ -e $1 || -L $1 ]] || { echo 0; return; }
-  s=$(du -sx --block-size=1 -- "$1" 2>/dev/null | cut -f1); echo "${s:-0}"; }
+  s=$(timeout 10 du -sk -- "$1" 2>/dev/null | cut -f1); echo $(( ${s:-0} * 1024 )); }
+# Normalize a path to absolute canonical form without requiring it to exist
+# (macOS realpath lacks -m; fall back to readlink/python).
+normalize_path() {
+  local p=$1
+  if [[ -e $p || -L $p ]]; then
+    readlink -f -- "$p" 2>/dev/null && return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys; print(os.path.normpath(os.path.abspath(sys.argv[1])))' "$p" 2>/dev/null && return 0
+  fi
+  printf '%s\n' "$p"
+}
 have() { command -v "$1" >/dev/null 2>&1; }
 confirm() { (( ASSUME_YES )) && return 0; local r
   printf '  %s [y/N] ' "${C_BOLD}$1${C_RESET}"; read -r r 2>/dev/null </dev/tty || { printf '\n'; return 1; }
@@ -48,7 +91,7 @@ _system_path() {
 }
 is_protected() {
   local rp p
-  rp=$(realpath -m -- "$1" 2>/dev/null) || return 0
+  rp=$(normalize_path "$1") || return 0
   _system_path "$rp" && return 0
   if [[ $rp != "$HOME"/* ]]; then
     if [[ -n ${SAFE_RM_ROOT:-} && $rp == "$SAFE_RM_ROOT"/* ]]; then return 1; fi
@@ -57,43 +100,48 @@ is_protected() {
   for p in "$HOME/Documents" "$HOME/Desktop" "$HOME/Pictures" "$HOME/Music" \
            "$HOME/Videos" "$HOME/Downloads" "$HOME/.config" "$HOME/.local" \
            "$HOME/.local/share" "$HOME/.local/state" "$HOME/.cache" \
-           "$HOME/snap" "$HOME/.var"; do
+           "$HOME/snap" "$HOME/.var" "$HOME/Library"; do
     [[ $rp == "$p" ]] && return 0
   done
-  for p in "$HOME/.ssh" "$HOME/.gnupg"; do
+  for p in "$HOME/.ssh" "$HOME/.gnupg" "$HOME/.Trash"; do
     [[ $rp == "$p" || $rp == "$p"/* ]] && return 0
   done
   return 1
 }
 
 # ---------- sensitive-data blocklist (NEVER delete, even in deep sweep) ----------
-# Names/paths that indicate credentials, profiles, or non-regenerable user data.
 SENSITIVE_KEYWORDS='password|passwd|secret|keyring|credential|token|cookie|login|profile|session|history|extension|bookmark|autofill|credit card|login data|web data|key[0-9]|cert9|places\.sqlite|keychain|keystore|wallet|private\.key|\.key$|ssh|gpg|gnupg'
 
 is_sensitive_name() {
-  local n=${1,,}
+  local n
+  n=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
   [[ $n =~ ($SENSITIVE_KEYWORDS) ]]
 }
 
 # Returns 0 if path is sensitive (must not be deleted)
 is_sensitive() {
-  local rp=$1 base parent
-  rp=$(realpath -m -- "$rp" 2>/dev/null) || return 0
-  is_protected "$rp" && return 0   # protected implies sensitive-ish; handled separately
+  local rp=$1 base
+  rp=$(normalize_path "$rp") || return 0
+  is_protected "$rp" && return 0
   base=$(basename "$rp")
   is_sensitive_name "$base" && return 0
   # browser profile/config roots are sacred
   case "$rp" in
     "$HOME/.config/google-chrome"*|"$HOME/.config/chromium"*|"$HOME/.config/BraveSoftware"*|\
     "$HOME/.config/microsoft-edge"*|"$HOME/.config/vivaldi"*|"$HOME/.config/opera"*|\
-    "$HOME/.mozilla"*|"$HOME/.config/mozilla"*) return 0 ;;
+    "$HOME/.mozilla"*|"$HOME/.config/mozilla"*|\
+    "$HOME/Library/Application Support/Google/Chrome"*|"$HOME/Library/Application Support/Chromium"*|\
+    "$HOME/Library/Application Support/BraveSoftware"*|"$HOME/Library/Application Support/Microsoft Edge"*|\
+    "$HOME/Library/Application Support/Vivaldi"*|"$HOME/Library/Application Support/Opera"*|\
+    "$HOME/Library/Application Support/Firefox"*|"$HOME/Library/Application Support/Mozilla"*) return 0 ;;
   esac
   # keyring / secret stores
   case "$rp" in
     "$HOME/.local/share/keyrings"*|"$HOME/.password-store"*|"$HOME/.config/keepassxc"*|\
-    "$HOME/.local/share/keepassxc"*|"$HOME/.config/Bitwarden"*|"$HOME/.config/bitwarden"*) return 0 ;;
+    "$HOME/.local/share/keepassxc"*|"$HOME/.config/Bitwarden"*|"$HOME/.config/bitwarden"*|\
+    "$HOME/Library/Keychains"*) return 0 ;;
   esac
-  # shallow content sniff: if a dir contains credential-like files, treat as sensitive
+  # shallow content sniff
   if [[ -d $rp ]]; then
     local f
     for f in "$rp"/*; do
@@ -104,7 +152,6 @@ is_sensitive() {
   return 1
 }
 
-# A cache dir is "safe to consider" only if not sensitive
 cache_candidate_ok() {
   local p=$1
   is_protected "$p" && return 1
@@ -124,10 +171,9 @@ safe_rm() {
     return 1
   fi
   if [[ -f ${MOLE_WHITELIST:-$HOME/.config/mole/whitelist} ]]; then
-    # reuse mo whitelist if present
     local wl=${MOLE_WHITELIST:-$HOME/.config/mole/whitelist}
     local rp line
-    rp=$(realpath -m -- "$target" 2>/dev/null)
+    rp=$(normalize_path "$target")
     while IFS= read -r line; do
       [[ -z $line || $line == \#* ]] && continue
       line="${line/#\~/$HOME}"
@@ -145,22 +191,23 @@ safe_rm() {
   return 0
 }
 
-# browser process detection
 browser_running() {
   local name=$1
   case "$name" in
     google-chrome|chromium) pgrep -f "chrome|chromium" >/dev/null 2>&1 ;;
     firefox) pgrep -f "firefox" >/dev/null 2>&1 ;;
-    brave) pgrep -f "brave" >/dev/null 2>&1 ;;
+    brave|BraveSoftware) pgrep -f "brave|Brave" >/dev/null 2>&1 ;;
+    microsoft-edge) pgrep -f "Microsoft Edge|msedge" >/dev/null 2>&1 ;;
+    vivaldi) pgrep -f "vivaldi|Vivaldi" >/dev/null 2>&1 ;;
+    opera) pgrep -f "opera|Opera" >/dev/null 2>&1 ;;
     *) pgrep -f "$name" >/dev/null 2>&1 ;;
   esac
 }
 
-# age in days of a path (by mtime), 9999 if missing
 path_age_days() {
   local p=$1 mtime now
   [[ -e $p ]] || { echo 9999; return; }
-  mtime=$(stat -c %Y -- "$p" 2>/dev/null) || { echo 9999; return; }
+  mtime=$(stat_mtime "$p") || { echo 9999; return; }
   now=$(date +%s)
   echo $(( (now - mtime) / 86400 ))
 }

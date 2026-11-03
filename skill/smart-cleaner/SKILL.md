@@ -20,9 +20,11 @@ A safety-first disk cleaner wrapping `mole-for-ubuntu` concepts. Default mode is
 
 ## Requirements
 
-- Linux (Ubuntu/Debian-friendly; uses apt, journalctl, snap, flatpak, docker when present)
+- macOS or Linux
+  - macOS: uses Mole (brew caches, ~/Library/Caches)
+  - Linux: uses mole-for-ubuntu (apt, journalctl, snap, flatpak, docker)
 - Bash, coreutils, find, du, stat
-- Optional: `mo` (mole-for-ubuntu), snap, flatpak, docker/podman
+- Optional: `mole` (macOS) / `mo` (mole-for-ubuntu), snap, flatpak, docker/podman, brew
 
 ## How to run
 
@@ -106,8 +108,8 @@ Agent runs: `smartclean scan --deep --keep-days 14` then applies chosen categori
 ## When NOT to use
 
 - User explicitly wants mole's interactive menu → suggest `mo`.
-- User wants to uninstall an app → use package manager (`apt remove`, etc.); smartclean does not uninstall.
-- macOS/Windows → not supported.
+- User wants to uninstall an app → use package manager/brew; smartclean does not uninstall.
+- Windows → not supported (macOS and Linux supported).
 
 ## Free vs Pro
 
