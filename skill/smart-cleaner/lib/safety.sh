@@ -2,7 +2,7 @@
 # lib/safety.sh — protected paths, sensitive-data blocklist, safe removal
 # Adapted from mole (macOS) / mole-for-ubuntu. Standalone so smartclean works without mo.
 
-SMARTCLEAN_VERSION="0.2.3"
+SMARTCLEAN_VERSION="0.2.5"
 
 DRY_RUN=${DRY_RUN:-0}
 ASSUME_YES=${ASSUME_YES:-0}
