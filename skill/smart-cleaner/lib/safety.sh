@@ -8,7 +8,7 @@ DRY_RUN=${DRY_RUN:-0}
 ASSUME_YES=${ASSUME_YES:-0}
 TOTAL_FREED=0
 
-if [[ -t 1 ]]; then
+if [[ -t 1 ]] && [[ -z ${NO_COLOR:-} ]]; then
   C_RESET=$'\e[0m' C_BOLD=$'\e[1m' C_DIM=$'\e[2m'
   C_RED=$'\e[31m' C_GREEN=$'\e[32m' C_YELLOW=$'\e[33m'
   C_BLUE=$'\e[34m' C_MAGENTA=$'\e[35m' C_CYAN=$'\e[36m'
