@@ -73,6 +73,10 @@ done
 # scan is always dry-run
 [[ $CMD == scan ]] && { DRY_RUN=1; APPLY=0; }
 
+if ! [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]]; then
+  echo "smartclean: --keep-days must be a non-negative integer" >&2
+  exit 1
+fi
 [[ -z $TARGET ]] && { [[ -d $HOME/dev ]] && TARGET="$HOME/dev" || TARGET="$HOME"; }
 TARGET=$(normalize_path "$TARGET")
 [[ -d $TARGET ]] || { echo "smartclean: --target must be an existing directory: $TARGET" >&2; exit 1; }
