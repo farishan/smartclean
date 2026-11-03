@@ -85,6 +85,16 @@ if ! [[ "$SCAN_TIMEOUT" =~ ^[0-9]+$ ]] || (( SCAN_TIMEOUT < 1 )); then
   echo "smartclean: --timeout must be a positive integer" >&2
   exit 1
 fi
+VALID_CATS="trash browsers dev cache system snap flatpak docker artifacts installers large all"
+if [[ "$CATEGORIES" != "all" ]]; then
+  IFS=',' read -ra _cats <<<"$CATEGORIES"
+  for _c in "${_cats[@]}"; do
+    if ! [[ " $VALID_CATS " =~ " $_c " ]]; then
+      echo "smartclean: unknown category: $_c" >&2
+      exit 1
+    fi
+  done
+fi
 [[ -z $TARGET ]] && { [[ -d $HOME/dev ]] && TARGET="$HOME/dev" || TARGET="$HOME"; }
 TARGET=$(normalize_path "$TARGET")
 [[ -d $TARGET ]] || { echo "smartclean: --target must be an existing directory: $TARGET" >&2; exit 1; }
