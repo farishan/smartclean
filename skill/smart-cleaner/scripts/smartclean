@@ -65,6 +65,7 @@ while (($#)); do
     --dry-run) DRY_RUN=1; APPLY=0 ;;
     --apply) APPLY=1; DRY_RUN=0 ;;
     -h|--help) usage; exit 0 ;;
+    -V|--version) echo "smartclean $SMARTCLEAN_VERSION"; exit 0 ;;
     *) ARGS+=("$1") ;;
   esac
   shift
