@@ -75,6 +75,7 @@ done
 
 [[ -z $TARGET ]] && { [[ -d $HOME/dev ]] && TARGET="$HOME/dev" || TARGET="$HOME"; }
 TARGET=$(normalize_path "$TARGET")
+[[ -d $TARGET ]] || { echo "smartclean: --target must be an existing directory: $TARGET" >&2; exit 1; }
 
 cat_in() { [[ ",$CATEGORIES," == *,all,* || ",$CATEGORIES," == *,$1,* ]]; }
 
