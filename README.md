@@ -7,7 +7,7 @@ Unlike brute-force cleaners, `smartclean` ranks candidates by size, skips hot ca
 ## Install
 
 ```bash
-git clone https://github.com/farishan/smart-cleaner.git ~/dev/smart-cleaner
+git clone https://github.com/farishan/smartclean.git ~/dev/smartclean
 cd ~/dev/smart-cleaner && bash install.sh
 ```
 
