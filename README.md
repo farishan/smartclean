@@ -53,6 +53,16 @@ smartclean apply --yes          # apply all (confirms per category unless --yes)
 - Skill: `~/.agents/skills/smartclean/SKILL.md`
 - Command: `/smartclean` in OpenCode.
 
+## Agensi skill package
+
+A cross-agent skill package (SKILL.md standard) lives in `skill/smart-cleaner/`.
+Zip that folder and submit at https://agensi.io/dashboard/submit.
+
+- `skill/smart-cleaner/SKILL.md` — skill instructions
+- `skill/smart-cleaner/scripts/smartclean` — bundled CLI (chmod +x)
+- `skill/smart-cleaner/lib/safety.sh` — safety helpers
+- `skill/smart-cleaner/references/` — safety + install docs
+
 ## License
 
 MIT.
