@@ -2,7 +2,7 @@
 # lib/safety.sh — protected paths, sensitive-data blocklist, safe removal
 # Adapted from mole (macOS) / mole-for-ubuntu. Standalone so smartclean works without mo.
 
-SMARTCLEAN_VERSION="0.2.2"
+SMARTCLEAN_VERSION="0.2.3"
 
 DRY_RUN=${DRY_RUN:-0}
 ASSUME_YES=${ASSUME_YES:-0}
@@ -210,4 +210,13 @@ path_age_days() {
   mtime=$(stat_mtime "$p") || { echo 9999; return; }
   now=$(date +%s)
   echo $(( (now - mtime) / 86400 ))
+}
+
+
+# JSON string escaping helper (used by smartclean JSON output)
+json_escape() {
+  local t=$1
+  t=${t//\\/\\\\}
+  t=${t//\"/\\\"}
+  printf '%s' "$t"
 }

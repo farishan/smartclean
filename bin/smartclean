@@ -408,7 +408,6 @@ fi
 
 if (( JSON )); then
   printf '{\n  "version": "%s",\n  "keep_days": %d,\n  "deep": %d,\n  "candidates": [\n' "$SMARTCLEAN_VERSION" "$KEEP_DAYS" "$DEEP"
-  json_escape() { local t=$1; t=${t//\\/\\\\}; t=${t//\"/\\\"}; printf '%s' "$t"; }
   local i=0
   for c in "${CANDS[@]}"; do
     IFS=$'\t' read -r sz cat path reason <<<"$c"

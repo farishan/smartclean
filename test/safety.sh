@@ -31,4 +31,9 @@ if cache_candidate_ok "$HOME/.cache/pip"; then pass "cache candidate ok: pip"; e
 # Protected cache root not a candidate
 if cache_candidate_ok "$HOME/.cache"; then fail "cache root should not be candidate"; else pass "cache root blocked"; fi
 
+# json_escape
+out=$(json_escape 'a"b\c')
+[[ "$out" == 'a\"b\\c' ]] || { echo "FAIL: json_escape got $out"; exit 1; }
+echo "PASS: json_escape"
+
 echo "ALL SAFETY TESTS PASSED"
