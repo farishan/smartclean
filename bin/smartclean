@@ -37,6 +37,7 @@ ${C_BOLD}Options:${C_RESET}
   --json                machine-readable output (scan only)
   --yes                 skip confirmations (apply mode)
   --dry-run             force preview even with --apply
+  --no-color            disable colored output
   -h, --help            this help
 
 ${C_BOLD}Examples:${C_RESET}
@@ -63,6 +64,7 @@ while (($#)); do
     --json) JSON=1 ;;
     --yes) ASSUME_YES=1 ;;
     --dry-run) DRY_RUN=1; APPLY=0 ;;
+    --no-color) NO_COLOR=1 ;;
     --apply) APPLY=1; DRY_RUN=0 ;;
     -h|--help) usage; exit 0 ;;
     -V|--version) echo "smartclean $SMARTCLEAN_VERSION"; exit 0 ;;
