@@ -1,6 +1,6 @@
-# smart-cleaner
+# smartclean
 
-A smart, safety-first disk cleaner built on top of [Mole](https://github.com/tw93/mole) (`mo`, macOS) and OpenCode.
+A smart, safety-first disk cleaner that runs on **macOS** (with [Mole](https://github.com/tw93/mole), `mo`) and **Linux** (with [mole-for-ubuntu](https://github.com/ccyisafool/mole-for-ubuntu-and-friends), `mo`), with [OpenCode](https://opencode.ai) integration.
 
 Unlike brute-force cleaners, `smartclean` ranks candidates by size, skips hot caches and active projects, refuses to touch sensitive data (passwords, cookies, browser profiles, keyrings, ssh/gpg), and never deletes without confirmation. Default mode is **scan** (no changes).
 
@@ -8,10 +8,19 @@ Unlike brute-force cleaners, `smartclean` ranks candidates by size, skips hot ca
 
 ```bash
 git clone https://github.com/farishan/smartclean.git ~/dev/smartclean
-cd ~/dev/smart-cleaner && bash install.sh
+cd ~/dev/smartclean && bash install.sh
 ```
 
-Requires: bash, coreutils, find, du, stat. Optional: `mo` (Mole, macOS) for system-level helpers; `brew`, `docker`/`podman` if you use those. Linux-only categories (snap/flatpak/apt) are skipped on macOS.
+Requires: bash, coreutils, find, du, stat. Optional: `mo` (Mole / mole-for-ubuntu) for system-level helpers; `brew` (macOS) or `apt`/`snap`/`flatpak` (Linux); `docker`/`podman` if you use those.
+
+## Platforms
+
+| OS | System helper | System paths cleaned |
+|---|---|---|
+| macOS | Mole (`mo`) | Homebrew cache, `~/Library/Logs`, `/var/log` |
+| Linux | mole-for-ubuntu (`mo`) | apt cache, systemd journal, `/var/log`, snap, flatpak |
+
+Shared categories on both: trash, browsers, dev caches, docker, build artifacts, installers, large files.
 
 ## Usage
 
@@ -20,9 +29,9 @@ smartclean                      # full scan, no changes
 smartclean scan --json          # JSON report
 smartclean scan --deep          # include deep sweeps
 smartclean scan --keep-days 14  # protect 14-day-old caches
-smartclean scan --target ~/dev # artifacts/large files under ~/dev
+smartclean scan --target ~/dev  # artifacts/large files under ~/dev
 smartclean apply --category artifacts --target ~/dev
-smartclean apply --yes          # apply all (careful, confirms per category unless --yes)
+smartclean apply --yes          # apply all (confirms per category unless --yes)
 ```
 
 ## Categories
@@ -31,17 +40,17 @@ smartclean apply --yes          # apply all (careful, confirms per category unle
 
 ## Safety
 
-- Never deletes `~/.config`, `~/.local`, `~/.ssh`, `~/.gnupg`, `~/Documents`, `~/Pictures`, etc.
+- Never deletes `~/.config`, `~/.local`, `~/.ssh`, `~/.gnupg`, `~/Documents`, `~/Pictures`, `~/Library` (macOS), etc.
 - Blocklists sensitive names/contents (password, secret, keyring, cookie, login, profile, session, wallet, ssh, gpg, key4, cert9, ...).
 - Skips browser caches while the browser is running.
 - Skips caches/projects used within `--keep-days`.
 - Skips build artifacts in projects with recent git activity.
-- System paths cleaned via proper tools (`apt-get clean`, `journalctl --vacuum-time`, ...), never raw deletion.
+- System paths cleaned via proper tools (`apt-get clean`, `journalctl --vacuum-time`, `brew cleanup`), never raw deletion.
 - Scans are bounded by `--timeout`; huge trees skipped unless `--deep`.
 
 ## OpenCode integration
 
-- Skill: `~/.agents/skills/smart-cleaner/SKILL.md`
+- Skill: `~/.agents/skills/smartclean/SKILL.md`
 - Command: `/smartclean` in OpenCode.
 
 ## License

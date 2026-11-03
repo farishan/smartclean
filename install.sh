@@ -8,12 +8,12 @@ echo "installed: $HOME/.local/bin/smartclean -> $SC_HOME/bin/smartclean"
 echo "ensure ~/.local/bin is on PATH (it usually is)."
 # OpenCode integration (skill + command) if OpenCode is present
 if [[ -d "$HOME/.config/opencode" ]]; then
-  mkdir -p "$HOME/.agents/skills/smart-cleaner" "$HOME/.config/opencode/commands"
-  if [[ ! -f "$HOME/.agents/skills/smart-cleaner/SKILL.md" ]]; then
-    cat > "$HOME/.agents/skills/smart-cleaner/SKILL.md" <<'SKILLEOF'
+  mkdir -p "$HOME/.agents/skills/smartclean" "$HOME/.config/opencode/commands"
+  if [[ ! -f "$HOME/.agents/skills/smartclean/SKILL.md" ]]; then
+    cat > "$HOME/.agents/skills/smartclean/SKILL.md" <<'SKILLEOF'
 ---
 name: smart-cleaner
-description: Smart, safety-first disk cleaner for macOS (Mole). Ranks candidates by size, skips hot caches and active projects, refuses sensitive data, never deletes without confirmation. Default mode is scan (no changes).
+description: Smart, safety-first disk cleaner for macOS (Mole) and Linux (mole-for-ubuntu). Ranks candidates by size, skips hot caches and active projects, refuses sensitive data, never deletes without confirmation. Default mode is scan (no changes).
 ---
 # Smart Cleaner
 
