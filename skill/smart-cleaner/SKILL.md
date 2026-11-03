@@ -11,7 +11,7 @@ when_to_use: |
   - User asks to free disk space, clean caches, purge artifacts, find large files, tidy machine
   - User mentions "smart clean", "disk cleaner", "reclaim space"
   - Do NOT use for uninstalling apps (use package manager/mole instead)
-  - Do NOT use on macOS/Windows (Linux only)
+  - Do NOT use on Windows (macOS and Linux supported)
 ---
 
 # Smart Cleaner

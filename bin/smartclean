@@ -330,6 +330,7 @@ scan_artifacts() {
       target)       [[ -f $parent/Cargo.toml   ]] || continue ;;
       .next)        [[ -f $parent/package.json ]] || continue ;;
       build)        [[ -f $parent/build.gradle || -f $parent/build.gradle.kts ]] || continue ;;
+      dist)         [[ -f $parent/package.json || -f $parent/Cargo.toml ]] || continue ;;
     esac
     local projroot="$parent"
     local probe="$parent"
@@ -406,11 +407,12 @@ fi
 
 if (( JSON )); then
   printf '{\n  "version": "%s",\n  "keep_days": %d,\n  "deep": %d,\n  "candidates": [\n' "$SMARTCLEAN_VERSION" "$KEEP_DAYS" "$DEEP"
+  json_escape() { local t=$1; t=${t//\\/\\\\}; t=${t//\"/\\\"}; printf '%s' "$t"; }
   local i=0
   for c in "${CANDS[@]}"; do
     IFS=$'\t' read -r sz cat path reason <<<"$c"
     (( i > 0 )) && printf ',\n'
-    printf '    {"size": %s, "category": "%s", "path": "%s", "reason": "%s"}' "$sz" "$cat" "${path//\"/\\\"}" "${reason//\"/\\\"}"
+    printf '    {"size": %s, "category": "%s", "path": "%s", "reason": "%s"}' "$sz" "$cat" "$(json_escape "$path")" "$(json_escape "$reason")"
     i=$((i+1))
   done
   printf '\n  ],\n  "skipped": [\n'
@@ -418,7 +420,7 @@ if (( JSON )); then
   for s in "${SKIPS[@]}"; do
     IFS=$'\t' read -r path reason <<<"$s"
     (( i > 0 )) && printf ',\n'
-    printf '    {"path": "%s", "reason": "%s"}' "${path//\"/\\\"}" "${reason//\"/\\\"}"
+    printf '    {"path": "%s", "reason": "%s"}' "$(json_escape "$path")" "$(json_escape "$reason")"
     i=$((i+1))
   done
   printf '\n  ]\n}\n'
