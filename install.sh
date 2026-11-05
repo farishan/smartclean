@@ -8,18 +8,7 @@ echo "installed: $HOME/.local/bin/smartclean -> $SC_HOME/bin/smartclean"
 echo "ensure ~/.local/bin is on PATH (it usually is)."
 # OpenCode integration (skill + command) if OpenCode is present
 if [[ -d "$HOME/.config/opencode" ]]; then
-  mkdir -p "$HOME/.agents/skills/smartclean" "$HOME/.config/opencode/commands"
-  if [[ ! -f "$HOME/.agents/skills/smartclean/SKILL.md" ]]; then
-    cat > "$HOME/.agents/skills/smartclean/SKILL.md" <<'SKILLEOF'
----
-name: smart-cleaner
-description: Smart, safety-first disk cleaner for macOS (Mole) and Linux (mole-for-ubuntu). Ranks candidates by size, skips hot caches and active projects, refuses sensitive data, never deletes without confirmation. Default mode is scan (no changes).
----
-# Smart Cleaner
-
-Run `smartclean` (scan by default). See `smartclean --help`.
-SKILLEOF
-  fi
+  mkdir -p "$HOME/.config/opencode/commands"
   if [[ ! -f "$HOME/.config/opencode/commands/smartclean.md" ]]; then
     cat > "$HOME/.config/opencode/commands/smartclean.md" <<'CMDEOF'
 ---
@@ -28,6 +17,6 @@ description: Run smartclean disk scan (no changes). Use --apply to delete.
 Run `smartclean` with any arguments passed.
 CMDEOF
   fi
-  echo "opencode: skill + /smartclean command installed"
+  echo "opencode: /smartclean command installed"
 fi
 if command -v mole >/dev/null 2>&1; then echo "mole: detected ($(command -v mole))"; else echo "mole: not found (optional)"; fi

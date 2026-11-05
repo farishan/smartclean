@@ -1,5 +1,5 @@
 ---
-name: smart-cleaner
+name: smartclean
 description: >-
   Smart, safety-first disk cleaner for Linux. Scans and ranks reclaimable space
   (trash, browser/dev caches, build artifacts, installers, large files, docker/snap)
