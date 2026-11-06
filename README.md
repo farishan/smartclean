@@ -2,6 +2,8 @@
 
 ![CI](https://github.com/farishan/smart-cleaner/actions/workflows/ci.yml/badge.svg)
 
+![smartclean cover](assets/cover.svg)
+
 A smart, safety-first disk cleaner that runs on **macOS** (with [Mole](https://github.com/tw93/mole), `mo`) and **Linux** (with [mole-for-ubuntu](https://github.com/ccyisafool/mole-for-ubuntu-and-friends), `mo`), with [OpenCode](https://opencode.ai) integration.
 
 Unlike brute-force cleaners, `smartclean` ranks candidates by size, skips hot caches and active projects, refuses to touch sensitive data (passwords, cookies, browser profiles, keyrings, ssh/gpg), and never deletes without confirmation. Default mode is **scan** (no changes).

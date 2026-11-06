@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0d1117"/>
+  <rect x="60" y="60" width="1080" height="510" rx="16" fill="#161b22" stroke="#30363d"/>
+  <text x="100" y="150" font-family="monospace" font-size="56" font-weight="700" fill="#58a6ff">smartclean</text>
+  <text x="100" y="200" font-family="sans-serif" font-size="26" fill="#8b949e">Safety-first disk cleaner for macOS and Linux</text>
+  <text x="100" y="280" font-family="monospace" font-size="20" fill="#c9d1d9">$ smartclean scan</text>
+  <text x="100" y="320" font-family="monospace" font-size="20" fill="#3fb950">✓ 1.2 GB  ~/Library/Caches  (safe)</text>
+  <text x="100" y="360" font-family="monospace" font-size="20" fill="#3fb950">✓ 840 MB  Docker unused layers</text>
+  <text x="100" y="400" font-family="monospace" font-size="20" fill="#f85149">✗  protected: ~/.ssh, browser profiles, keyrings</text>
+  <text x="100" y="480" font-family="sans-serif" font-size="20" fill="#8b949e">Ranks by size. Skips hot caches, active projects, sensitive data. Never deletes without confirmation.</text>
+</svg>
