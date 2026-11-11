@@ -417,10 +417,84 @@ scan_large() {
       -type f -size +"$((MIN_LARGE_MB-1))"M -print 2>/dev/null | head -200 )
 }
 
+# ---------- progress / cancellation ----------
+CANCELLED=0
+SCAN_PHASES=(trash browsers dev cache system snap flatpak docker artifacts installers large)
+phase_fn() {
+  case "$1" in
+    trash) printf 'scan_trash' ;;
+    browsers) printf 'scan_browsers' ;;
+    dev) printf 'scan_dev' ;;
+    cache) printf 'scan_cache' ;;
+    system) printf 'scan_system' ;;
+    snap) printf 'scan_snap' ;;
+    flatpak) printf 'scan_flatpak' ;;
+    docker) printf 'scan_docker' ;;
+    artifacts) printf 'scan_artifacts' ;;
+    installers) printf 'scan_installers' ;;
+    large) printf 'scan_large' ;;
+  esac
+}
+phase_label() {
+  case "$1" in
+    trash) printf 'trash' ;;
+    browsers) printf 'browsers' ;;
+    dev) printf 'dev caches' ;;
+    cache) printf 'deep cache sweep' ;;
+    system) printf 'system' ;;
+    snap) printf 'snap' ;;
+    flatpak) printf 'flatpak' ;;
+    docker) printf 'docker' ;;
+    artifacts) printf 'build artifacts' ;;
+    installers) printf 'installers' ;;
+    large) printf 'large files' ;;
+  esac
+}
+on_cancel() {
+  CANCELLED=1
+  printf '\n' >&2
+  printf '%s scan cancelled by user (Ctrl+C) — finishing with partial results...\n' "${C_YELLOW}!${C_RESET}" >&2
+}
+trap on_cancel INT TERM
+
 main() {
-# ---------- run scans ----------
-scan_trash; scan_browsers; scan_dev; scan_cache; scan_system; scan_snap
-scan_flatpak; scan_docker; scan_artifacts; scan_installers; scan_large
+# ---------- run scans (with progress + safe cancellation) ----------
+ACTIVE_PHASES=()
+for _p in "${SCAN_PHASES[@]}"; do
+  cat_in "$_p" || continue
+  [[ "$_p" == cache && $DEEP -eq 0 ]] && continue
+  ACTIVE_PHASES+=("$_p")
+done
+TOTAL_PHASES=${#ACTIVE_PHASES[@]}
+(( TOTAL_PHASES == 0 )) && TOTAL_PHASES=1
+SCAN_START=$(date +%s)
+COMPLETED=0
+for _p in "${ACTIVE_PHASES[@]}"; do
+  (( CANCELLED )) && break
+  COMPLETED=$((COMPLETED + 1))
+  now=$(date +%s)
+  elapsed=$((now - SCAN_START))
+  if (( COMPLETED > 1 )); then
+    avg=$(( elapsed / (COMPLETED - 1) ))
+    remaining=$(( (TOTAL_PHASES - (COMPLETED - 1)) * avg ))
+  else
+    remaining=0
+  fi
+  _label=$(phase_label "$_p")
+  if [[ -t 2 ]]; then
+    printf '\r\033[K  [%d/%d] %-18s  elapsed %3ds  ETA ~%3ds' "$COMPLETED" "$TOTAL_PHASES" "$_label" "$elapsed" "$remaining" >&2
+  else
+    printf '  [%d/%d] %s...\n' "$COMPLETED" "$TOTAL_PHASES" "$_label" >&2
+  fi
+  "$(phase_fn "$_p")"
+  (( CANCELLED )) && break
+done
+if [[ -t 2 ]]; then
+  printf '\r\033[K' >&2
+fi
+if (( CANCELLED )); then
+  printf '%s scan cancelled — reporting partial results (%d/%d phases done).\n' "${C_YELLOW}!${C_RESET}" "$COMPLETED" "$TOTAL_PHASES" >&2
+fi
 
 # ---------- output ----------
 if (( ${#CANDS[@]} > 0 )); then
@@ -432,7 +506,7 @@ if (( ${#CANDS[@]} > 0 )); then
 fi
 
 if (( JSON )); then
-  printf '{\n  "version": "%s",\n  "keep_days": %d,\n  "deep": %d,\n  "candidates": [\n' "$SMARTCLEAN_VERSION" "$KEEP_DAYS" "$DEEP"
+  printf '{\n  "version": "%s",\n  "keep_days": %d,\n  "deep": %d,\n  "cancelled": %s,\n  "candidates": [\n' "$SMARTCLEAN_VERSION" "$KEEP_DAYS" "$DEEP" "$(( CANCELLED ? 1 : 0 ))"
   local i=0
   for c in "${CANDS[@]}"; do
     IFS=$'\t' read -r sz cat path reason <<<"$c"
@@ -453,7 +527,7 @@ if (( JSON )); then
 fi
 
 # human report
-printf '%s\n' "${C_BOLD}smartclean scan${C_RESET} — smart disk analysis (no changes)$( (( DRY_RUN )) && printf ' %s' "${C_YELLOW}(dry run)${C_RESET}")"
+printf '%s\n' "${C_BOLD}smartclean scan${C_RESET} — smart disk analysis (no changes)$( (( DRY_RUN )) && printf ' %s' "${C_YELLOW}(dry run)${C_RESET}")$( (( CANCELLED )) && printf ' %s' "${C_YELLOW}(partial - cancelled)${C_RESET}")"
 printf '%s\n' "${C_DIM}keep-days=${KEEP_DAYS} deep=${DEEP} target=${TARGET}${C_RESET}"
 printf '\n'
 
@@ -504,6 +578,7 @@ if (( APPLY )); then
   DRY_RUN=0
   local cat
   for cat in trash browsers dev cache system snap flatpak docker artifacts installers large; do
+    (( CANCELLED )) && break
     local items=()
     for c in "${CANDS[@]}"; do
       IFS=$'\t' read -r sz ccat path reason <<<"$c"
@@ -516,7 +591,7 @@ if (( APPLY )); then
     fi
     case "$cat" in
       trash|browsers|dev|cache|flatpak|artifacts|installers|large)
-        for p in "${items[@]}"; do safe_rm "$p"; done ;;
+        for p in "${items[@]}"; do (( CANCELLED )) && break; safe_rm "$p"; done ;;
       system)
         if have brew; then
           if confirm_or_dry "Run brew cleanup?"; then

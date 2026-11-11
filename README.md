@@ -51,6 +51,7 @@ smartclean apply --yes          # apply all (confirms per category unless --yes)
 - Skips build artifacts in projects with recent git activity.
 - System paths cleaned via proper tools (`apt-get clean`, `journalctl --vacuum-time`, `brew cleanup`), never raw deletion.
 - Scans are bounded by `--timeout`; huge trees skipped unless `--deep`.
+- Scan shows live progress with ETA on stderr; press Ctrl+C to cancel safely (partial results reported).
 
 ## OpenCode integration
 
