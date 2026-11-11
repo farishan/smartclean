@@ -71,3 +71,9 @@ Zip that folder and submit at https://agensi.io/dashboard/submit.
 ## License
 
 MIT.
+
+## Installation
+
+```bash
+git clone https://github.com/farishan/smartclean.git
+```
