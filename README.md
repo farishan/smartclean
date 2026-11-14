@@ -2,6 +2,8 @@
 
 ![CI](https://github.com/farishan/smart-cleaner/actions/workflows/ci.yml/badge.svg)
 
+[![Gumroad](https://img.shields.io/badge/Gumroad-OpenCode%20Dev%20Toolkit-ff90e8)](https://farishan1.gumroad.com/l/sknrfm)
+
 ![smartclean cover](assets/cover.svg)
 
 A smart, safety-first disk cleaner that runs on **macOS** (with [Mole](https://github.com/tw93/mole), `mo`) and **Linux** (with [mole-for-ubuntu](https://github.com/ccyisafool/mole-for-ubuntu-and-friends), `mo`), with [OpenCode](https://opencode.ai) integration.
