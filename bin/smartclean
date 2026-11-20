@@ -125,6 +125,16 @@ bounded_find() {
   fi
 }
 
+# Print a short notice to stderr before a potentially long-running step.
+scan_notice() {
+  local msg=$1
+  if [[ -t 2 ]]; then
+    printf '\r\033[K  %s\n' "$msg" >&2
+  else
+    printf '  %s\n' "$msg" >&2
+  fi
+}
+
 # ---------- category: trash ----------
 scan_trash() {
   cat_in trash || return 0
@@ -328,6 +338,7 @@ scan_artifacts() {
   local root="$TARGET"
   [[ -d $root ]] || return 0
   local root_sz
+  scan_notice "Measuring target tree size..."
   root_sz=$(path_size "$root")
   if (( root_sz > 50*1024*1024*1024 )) && (( ! DEEP )); then
     add_skip "$root" "tree >50GB; use --deep to scan"
@@ -336,6 +347,7 @@ scan_artifacts() {
 
   local hit parent artname
   local -a hits=()
+  scan_notice "Scanning build artifacts tree (this may take a while)..."
   while IFS= read -r hit; do
     hits+=("$hit")
   done < <( bounded_find "$root" -xdev \
@@ -343,12 +355,16 @@ scan_artifacts() {
          -o -path "$HOME/snap" -o -path "$HOME/.var" -o -path "$HOME/.npm" \
          -o -path "$HOME/.cargo/registry" -o -path "$HOME/.rustup" \
          -o -path "$HOME/Library/Caches" \
-         -o -path '*/node_modules/*' -o -path '*/target/*' -o -path '*/.next/*' \) -prune -o \
+         -o -path '*/node_modules/*' -o -path '*/target/*' -o -path '*/.next/*' \
+         -o -path '*/vendor/laravel' -o -path '*/vendor/laravel/*' \) -prune -o \
       -type d \( -name node_modules -o -name target -o -name __pycache__ \
                  -o -name .pytest_cache -o -name .mypy_cache -o -name .ruff_cache \
                  -o -name .tox -o -name .next -o -name build -o -name dist \) -prune -print 2>/dev/null )
 
+  scan_notice "Computing artifact sizes (${#hits[@]} found)..."
   for hit in "${hits[@]}"; do
+    # Never treat anything under vendor/laravel as a cleanable artifact
+    case "$hit" in */vendor/laravel|*/vendor/laravel/*) continue ;; esac
     parent=$(dirname "$hit")
     artname=$(basename "$hit")
     case "$artname" in
@@ -405,6 +421,7 @@ scan_large() {
   cat_in large || return 0
   local thr=$(( MIN_LARGE_MB * 1024 * 1024 ))
   local f sz
+  scan_notice "Scanning for large files (this may take a while)..."
   while IFS= read -r f; do
     [[ -e $f ]] || continue
     is_protected "$f" && continue
