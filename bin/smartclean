@@ -614,9 +614,15 @@ if (( APPLY )); then
       system)
         if have brew; then
           if confirm_or_dry "Run brew cleanup?"; then
+            _hb_sz=$(path_size "$HOME/Library/Caches/Homebrew")
             brew cleanup 2>/dev/null || true
+            TOTAL_FREED=$((TOTAL_FREED + ${_hb_sz:-0}))
           fi
         fi
+        # rotated user logs
+        for p in "${items[@]}"; do
+          [[ $p == "$HOME/Library/Logs" ]] && { (( CANCELLED )) && break; safe_rm "$p"; }
+        done
         if [[ -d /var/cache/apt/archives ]]; then
           local sz; sz=$(path_size /var/cache/apt/archives)
           if (( sz > 100*1024 )); then
@@ -632,11 +638,18 @@ if (( APPLY )); then
           fi
         fi
         if confirm_or_dry "Delete rotated logs in /var/log?"; then
+          local _logs_sz=0
+          if [[ $SC_OS == Darwin ]]; then
+            _logs_sz=$(find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -exec stat -f%z {} + 2>/dev/null | awk '{s+=$1} END{print s+0}')
+          else
+            _logs_sz=$(find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -printf '%s\n' 2>/dev/null | awk '{s+=$1} END{print s+0}')
+          fi
           if (( EUID == 0 )); then
             find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -delete
           else
             sudo find /var/log -xdev -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -delete
           fi
+          TOTAL_FREED=$((TOTAL_FREED + ${_logs_sz:-0}))
         fi
         ;;
       snap)
