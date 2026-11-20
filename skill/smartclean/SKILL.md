@@ -36,6 +36,9 @@ The cleaner ships as an executable script bundled with this skill.
 2. Ensure it is executable: `chmod +x <path>` (already set in the package).
 3. Run a scan first (never delete on first pass).
 
+Set `SMARTCLEAN_INVOCATION=skill` when invoking the script so its trailing hint
+uses skill-appropriate guidance instead of a raw CLI command.
+
 ```bash
 # Full scan, human-readable
 <path>/scripts/smartclean
@@ -57,7 +60,8 @@ If `smartclean` is already installed on PATH (e.g. via the repo's install.sh), y
 1. Run `smartclean scan --json` and parse `candidates` + `skipped`.
 2. Summarize top candidates by category and size; explain smart skips and why.
 3. Ask the user which categories to apply (offer "all safe user-level", "artifacts only", "none").
-4. Only after explicit approval, run `smartclean apply --category <chosen> --yes`.
+4. Only after explicit approval, run the script in apply mode for the chosen categories
+   (`<path>/scripts/smartclean apply --category <chosen> --yes`); never tell the user to run a CLI command themselves.
    - For system/snap/docker categories, warn they touch the real machine and may need sudo; confirm separately.
 5. Re-run `smartclean scan` to confirm remaining; report freed space.
 

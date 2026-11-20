@@ -589,7 +589,18 @@ for s in "${SKIPS[@]}"; do
   (( shown >= 25 )) && { printf '  %s... (%d more)%s\n' "${C_DIM}" "$(( ${#SKIPS[@]} - shown ))" "${C_RESET}"; break; }
 done
 
-printf '\n%s\n' "${C_DIM}Run 'smartclean apply' to delete (confirms per category). Use --apply --yes to skip prompts.${C_RESET}"
+# Context-aware next-step hint (slash command vs skill vs plain CLI)
+case "${SMARTCLEAN_INVOCATION:-cli}" in
+  slash)
+    printf '\n%s\n' "${C_DIM}Run '/smartclean-apply <category>' to delete (confirms per category), or '/smartclean-apply all'.${C_RESET}"
+    ;;
+  skill)
+    printf '\n%s\n' "${C_DIM}Run the smartclean skill in apply mode for <category> to delete (confirms per category), or for all.${C_RESET}"
+    ;;
+  *)
+    printf '\n%s\n' "${C_DIM}Run 'smartclean apply' to delete (confirms per category). Use --apply --yes to skip prompts.${C_RESET}"
+    ;;
+esac
 
 # ---------- apply mode ----------
 if (( APPLY )); then
