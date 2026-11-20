@@ -141,14 +141,20 @@ is_sensitive() {
     "$HOME/.local/share/keepassxc"*|"$HOME/.config/Bitwarden"*|"$HOME/.config/bitwarden"*|\
     "$HOME/Library/Keychains"*) return 0 ;;
   esac
-  # shallow content sniff
-  if [[ -d $rp ]]; then
-    local f
-    for f in "$rp"/*; do
-      [[ -e $f ]] || continue
-      is_sensitive_name "$(basename "$f")" && return 0
-    done
-  fi
+  # shallow content sniff (skip for known build-artifact dirs, whose entries are
+  # package/file names that may coincidentally match sensitive keywords)
+  case "$(basename "$rp")" in
+    node_modules|dist|target|build|.next|__pycache__|.pytest_cache|.mypy_cache|.ruff_cache|.tox|vendor) ;;
+    *)
+      if [[ -d $rp ]]; then
+        local f
+        for f in "$rp"/*; do
+          [[ -e $f ]] || continue
+          is_sensitive_name "$(basename "$f")" && return 0
+        done
+      fi
+      ;;
+  esac
   return 1
 }
 

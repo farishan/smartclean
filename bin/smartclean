@@ -74,6 +74,8 @@ while (($#)); do
 done
 # scan is always dry-run
 [[ $CMD == scan ]] && { DRY_RUN=1; APPLY=0; }
+# apply mode is live by default
+(( APPLY )) && DRY_RUN=0
 
 if ! [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]]; then
   echo "smartclean: --keep-days must be a non-negative integer" >&2
@@ -544,7 +546,7 @@ if (( JSON )); then
 fi
 
 # human report
-printf '%s\n' "${C_BOLD}smartclean scan${C_RESET} — smart disk analysis (no changes)$( (( DRY_RUN )) && printf ' %s' "${C_YELLOW}(dry run)${C_RESET}")$( (( CANCELLED )) && printf ' %s' "${C_YELLOW}(partial - cancelled)${C_RESET}")"
+printf '%s\n' "${C_BOLD}smartclean ${CMD}${C_RESET} — smart disk analysis (no changes)$( (( DRY_RUN )) && printf ' %s' "${C_YELLOW}(dry run)${C_RESET}")$( (( CANCELLED )) && printf ' %s' "${C_YELLOW}(partial - cancelled)${C_RESET}")"
 printf '%s\n' "${C_DIM}keep-days=${KEEP_DAYS} deep=${DEEP} target=${TARGET}${C_RESET}"
 printf '\n'
 
